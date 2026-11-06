@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: worktime-demo
+    runtime: docker
+    plan: free
+    rootDir: Worktime Tracker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
+    envVars:
+      - key: WORKTIME_DB_PATH
+        value: /tmp/worktime-demo.sqlite3

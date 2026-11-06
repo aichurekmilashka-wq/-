@@ -106,8 +106,8 @@ chrome.runtime.onMessage.addListener((message, _sender, reply) => {
     serial = serial.then(async () => {
       const config = message.config;
       const url = new URL(config.baseUrl);
-      if (url.protocol !== "http:" || !["127.0.0.1", "localhost"].includes(url.hostname) || url.username || url.password || url.pathname !== "/" || url.search || url.hash) {
-        throw new Error("Укажите локальный адрес, например http://127.0.0.1:8765");
+      if (!WorktimeCore.isAllowedServer(url)) {
+        throw new Error("Укажите локальный адрес или HTTPS-адрес демо на onrender.com");
       }
       config.baseUrl = url.origin;
       const state = await request(config, "/api/tracker/state");

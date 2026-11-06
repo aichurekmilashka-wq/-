@@ -33,3 +33,14 @@ jobs:
           node-version: '22'
       - run: npm install
       - run: npm run build
+  hosted:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t worktime-demo .
+      - run: docker run -d --name worktime-smoke -p 127.0.0.1:8766:10000 -e RENDER_EXTERNAL_URL=https://worktime-test.onrender.com worktime-demo
+      - run: python3 scripts/smoke-hosted.py --base-url http://127.0.0.1:8766 --public-origin https://worktime-test.onrender.com
+      - if: always()
+        run: docker logs worktime-smoke
+      - if: always()
+        run: docker rm -f worktime-smoke

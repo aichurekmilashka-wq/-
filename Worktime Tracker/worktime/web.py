@@ -35,9 +35,21 @@ def cookie_token(environ):
 
 
 class Application:
-    def __init__(self, store):
+    def __init__(self, store, public_origin=None, demo_mode=False):
         self.store = store
         self.auth = Auth(store)
+        self.public_origin = None
+        self.public_host = None
+        self.demo_mode = demo_mode
+        self.cookie_security = ""
+        if public_origin:
+            parsed = urlsplit(public_origin)
+            if (parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password
+                    or parsed.path not in ("", "/") or parsed.query or parsed.fragment):
+                raise ValueError("Публичный адрес должен быть HTTPS-origin без пути и параметров")
+            self.public_origin = "https://" + parsed.netloc.lower()
+            self.public_host = parsed.netloc.lower()
+            self.cookie_security = "; Secure"
 
     def __call__(self, environ, start_response):
         headers = [("X-Content-Type-Options", "nosniff"), ("Cache-Control", "no-store"),
@@ -68,16 +80,18 @@ class Application:
         host = env.get("HTTP_HOST", "")
         try:
             parts = urlsplit("http://" + host)
-            valid_host = parts.hostname in ("127.0.0.1", "localhost") and not parts.username and not parts.path
+            permitted = parts.hostname in ("127.0.0.1", "localhost") or (self.public_host and parts.netloc.lower() == self.public_host)
+            valid_host = permitted and not parts.username and not parts.path and not parts.query and not parts.fragment
         except ValueError:
             valid_host = False
         if not valid_host:
-            raise Problem("Приложение доступно только через localhost или 127.0.0.1", 403)
+            raise Problem("Этот адрес сервера не разрешён", 403)
         path, method = env["PATH_INFO"], env["REQUEST_METHOD"]
         tracker = path.startswith("/api/tracker/")
         origin = env.get("HTTP_ORIGIN", "")
         extension_origin = re.fullmatch(r"chrome-extension://[a-p]{32}", origin or "")
-        if origin and origin != "http://" + host and not (tracker and extension_origin):
+        expected_origin = self.public_origin or "http://" + host
+        if origin and origin != expected_origin and not (tracker and extension_origin):
             raise Problem("Запрос с постороннего сайта отклонён", 403)
         extra = []
         if tracker and extension_origin:
@@ -86,11 +100,18 @@ class Application:
                      ("Access-Control-Allow-Methods", "GET, POST, OPTIONS")]
         if tracker and method == "OPTIONS":
             return 200, {}, extra
+        if path == "/healthz" and method == "GET":
+            return 200, {"ok": True}, []
         if path in STATIC_FILES and method == "GET":
             filename, mime = STATIC_FILES[path]
             if not (STATIC / filename).is_file():
                 raise Problem("Этот дополнительный файл ещё не собран", 404)
-            return 200, (STATIC / filename).read_bytes(), [("Content-Type", mime + "; charset=utf-8")]
+            content = (STATIC / filename).read_bytes()
+            if filename == "index.html" and self.demo_mode:
+                content = content.replace(b'id="demo-banner" class="demo-banner" hidden', b'id="demo-banner" class="demo-banner"')
+                content = content.replace("Локальное приложение · данные на вашем компьютере".encode(),
+                                          "Онлайн-демо · только вымышленные данные".encode())
+            return 200, content, [("Content-Type", mime + "; charset=utf-8")]
         if not path.startswith("/api/"):
             raise Problem("Страница не найдена", 404)
         body = {}
@@ -118,7 +139,7 @@ class Application:
             raise Problem("Маршрут расширения не найден", 404)
         if path == "/api/login" and method == "POST":
             token, user = self.auth.login(body.get("login"), body.get("password"))
-            cookie = f"worktime_session={token}; Path=/; HttpOnly; SameSite=Strict; Max-Age={SESSION_SECONDS}"
+            cookie = f"worktime_session={token}; Path=/; HttpOnly; SameSite=Strict; Max-Age={SESSION_SECONDS}" + self.cookie_security
             return 200, {"user": user, "server_time": self.store.clock(),
                          "widgets_available": (STATIC / "widgets.js").is_file()}, [("Set-Cookie", cookie)]
         token = cookie_token(env)
@@ -128,7 +149,7 @@ class Application:
                          "widgets_available": (STATIC / "widgets.js").is_file()}, []
         if path == "/api/logout" and method == "POST":
             self.auth.logout(token)
-            return 200, {"ok": True}, [("Set-Cookie", "worktime_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0")]
+            return 200, {"ok": True}, [("Set-Cookie", "worktime_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0" + self.cookie_security)]
         if path == "/api/employees":
             if method == "GET":
                 people = self.store.employees(None if user["role"] == "admin" else user["employee_id"])

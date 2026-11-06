@@ -6,6 +6,7 @@
   "minimum_chrome_version": "120",
   "permissions": ["tabs", "idle", "storage", "alarms"],
   "host_permissions": ["http://127.0.0.1/*", "http://localhost/*"],
+  "optional_host_permissions": ["https://*.onrender.com/*"],
   "background": {"service_worker": "background.js"},
   "action": {"default_popup": "popup.html", "default_title": "Worktime"},
   "incognito": "not_allowed"

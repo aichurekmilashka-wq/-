@@ -16,8 +16,14 @@ byId("setup").addEventListener("submit", async event => {
   byId("connect").disabled = true;
   byId("message").textContent = "Подключение…";
   try {
+    const server = new URL(byId("server").value.trim());
+    if (!WorktimeCore.isAllowedServer(server)) throw new Error("Укажите localhost или HTTPS-адрес на onrender.com");
+    if (server.protocol === "https:") {
+      const granted = await chrome.permissions.request({origins: [server.origin + "/*"]});
+      if (!granted) throw new Error("Для подключения нужно разрешение на доступ к этому серверу");
+    }
     const result = await chrome.runtime.sendMessage({type: "configure", config: {
-      baseUrl: byId("server").value.trim(), key: byId("key").value.trim(), enabled: true,
+      baseUrl: server.origin, key: byId("key").value.trim(), enabled: true,
     }});
     if (!result?.ok) throw new Error(result?.error || "Не удалось подключиться");
     byId("message").textContent = "Готово. Запустите задачу в приложении.";

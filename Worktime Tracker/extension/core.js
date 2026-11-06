@@ -25,5 +25,10 @@ globalThis.WorktimeCore = (() => {
     }
     return {pending: same ? pending : [], previous: same && saved.config.enabled ? saved.previous ?? null : null};
   }
-  return {classify, interval, reconnectState};
+  function isAllowedServer(url) {
+    if (url.username || url.password || url.pathname !== "/" || url.search || url.hash) return false;
+    return (url.protocol === "http:" && ["127.0.0.1", "localhost"].includes(url.hostname)) ||
+      (url.protocol === "https:" && url.hostname.endsWith(".onrender.com"));
+  }
+  return {classify, interval, reconnectState, isAllowedServer};
 })();

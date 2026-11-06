@@ -54,5 +54,17 @@ test("resuming does not count the paused interval", () => {
 test("first connection starts without invented history", () => {
   equal(WorktimeCore.reconnectState({}, config), {pending: [], previous: null});
 });
+test("hosted demo server allows HTTPS on Render", () => {
+  equal(WorktimeCore.isAllowedServer({protocol: "https:", hostname: "worktime-test.onrender.com", pathname: "/", username: "", password: "", search: "", hash: ""}), true);
+});
+test("hosted demo server rejects deceptive domains", () => {
+  equal(WorktimeCore.isAllowedServer({protocol: "https:", hostname: "worktime.onrender.com.attacker.example", pathname: "/"}), false);
+});
+test("remote API rejects plaintext HTTP", () => {
+  equal(WorktimeCore.isAllowedServer({protocol: "http:", hostname: "worktime-test.onrender.com", pathname: "/"}), false);
+});
+test("local tracker remains supported", () => {
+  equal(WorktimeCore.isAllowedServer({protocol: "http:", hostname: "127.0.0.1", pathname: "/"}), true);
+});
 log(`${passed} passed, ${failures} failed`);
 if (failures) throw new Error("Extension tests failed");
