@@ -1,0 +1,14 @@
+@import "tailwindcss";
+@source "../components";
+@source "./";
+@custom-variant dark (&:where(.dark, .dark *));
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+}
+#react-widgets { margin-bottom: 18px; }

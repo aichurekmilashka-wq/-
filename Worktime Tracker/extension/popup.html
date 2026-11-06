@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Worktime</title><link rel="stylesheet" href="popup.css"></head>
+<body>
+  <header><span class="mark">W</span><div><strong>Worktime</strong><small>Активность браузера</small></div></header>
+  <section class="status"><strong id="status">Настройте подключение</strong><p id="details"></p></section>
+  <form id="setup">
+    <label for="server">Адрес приложения</label><input id="server" type="url" value="http://127.0.0.1:8765" required>
+    <label for="key">Код подключения сотрудника</label><input id="key" type="password" autocomplete="off" required>
+    <p class="hint">Код находится в приложении: «Таймер» → «Подключить расширение».</p>
+    <button id="connect" type="submit">Подключить и включить</button>
+  </form>
+  <button id="pause" class="secondary" type="button">Выключить наблюдение</button>
+  <p id="message" role="status"></p>
+  <footer>Только во время запущенной задачи. Активная вкладка, её название и время; параметры адреса удаляются. Простой — после 5 минут без ввода.</footer>
+  <script src="popup.js"></script>
+</body>
+</html>

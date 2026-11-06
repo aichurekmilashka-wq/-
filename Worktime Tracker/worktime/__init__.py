@@ -1,0 +1,1 @@
+"""Local employee time tracker."""
