@@ -16,24 +16,27 @@ function element(tag, className, text) {
 function syncTime(value) { if (value) { state.serverTime = value; state.syncedAt = performance.now(); } }
 function serverNow() { return state.serverTime + (performance.now() - state.syncedAt) / 1000; }
 async function api(path, body) {
+  const generation = state.generation;
   const response = await fetch(path, {method: body === undefined ? "GET" : "POST", credentials: "same-origin",
     headers: {"Content-Type": "application/json", "X-Requested-With": "worktime"}, body: body === undefined ? undefined : JSON.stringify(body)});
   const data = await response.json();
   if (!response.ok) {
-    if (response.status === 401 && path !== "/api/login") showLogin();
+    if (response.status === 401 && path !== "/api/login" && generation === state.generation) showLogin();
     const error = new Error(data.error || "Не удалось выполнить запрос");
     error.status = response.status;
     throw error;
   }
-  syncTime(data.server_time);
+  if (generation === state.generation) syncTime(data.server_time);
   return data;
 }
 let noticeTimeout;
 function notify(message) { $("notice").textContent = message; $("notice").hidden = false; clearTimeout(noticeTimeout); noticeTimeout = setTimeout(() => { $("notice").hidden = true; }, 5500); }
 function showLogin() {
   state.user = null; state.people = []; state.today = null; state.selected = null; state.generation++;
-  ["recent-rows", "employee-totals", "entry-rows", "page-rows", "people-list", "summary-grid", "report-stats", "time-bars"].forEach(id => $(id).replaceChildren());
-  ["tracking-key", "description", "password"].forEach(id => { $(id).value = ""; });
+  ["recent-rows", "employee-totals", "entry-rows", "page-rows", "people-list", "summary-grid", "report-stats", "time-bars", "employee", "report-employee"].forEach(id => $(id).replaceChildren());
+  ["tracking-key", "description", "password", "person-name", "person-login", "person-password"].forEach(id => { $(id).value = ""; });
+  ["account-name", "role", "running-description", "person-error", "report-error", "people-count"].forEach(id => { $(id).textContent = ""; });
+  $("elapsed").textContent = "00:00:00";
   window.worktimeSummary = undefined;
   window.dispatchEvent(new CustomEvent("worktime:summary", {detail: undefined}));
   $("login-screen").hidden = false; $("workspace").hidden = true;
@@ -260,4 +263,11 @@ function loadWidgets(available) {
   widgetsLoaded = true;
   import("/widgets.js").catch(() => { widgetsLoaded = false; notify("React-виджеты не загрузились. Используется обычная сетка."); });
 }
-api("/api/me").then(result => { loadWidgets(result.widgets_available); return enter(result.user); }).catch(error => { showLogin(); if (error.status !== 401) $("login-error").textContent = error.message; });
+const startupGeneration = state.generation;
+api("/api/me").then(result => {
+  if (startupGeneration !== state.generation) return;
+  loadWidgets(result.widgets_available); return enter(result.user);
+}).catch(error => {
+  if (startupGeneration !== state.generation) return;
+  showLogin(); if (error.status !== 401) $("login-error").textContent = error.message;
+});

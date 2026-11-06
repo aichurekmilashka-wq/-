@@ -174,7 +174,7 @@ class Store:
         person = self.tracker_state(key)["employee"]
         event_id = text(event.get("event_id"), "Идентификатор события", 100)
         session_id = event.get("session_id")
-        if isinstance(session_id, bool) or not isinstance(session_id, int):
+        if isinstance(session_id, bool) or not isinstance(session_id, int) or not 1 <= session_id <= 2**63 - 1:
             raise Problem("Некорректная задача")
         session = self.session(session_id)
         if session["employee_id"] != person["id"]:
@@ -241,6 +241,8 @@ class Store:
             session_end = entry["ended_at"] if entry["ended_at"] is not None else now
             seconds = max(0, min(event["ended_at"], upper, session_end)
                           - max(event["started_at"], lower, entry["started_at"]))
+            if seconds <= 0:
+                continue
             entry[event["kind"] + "_seconds"] += seconds
             if event["kind"] == "page":
                 key = (event["employee_id"], event["url"])

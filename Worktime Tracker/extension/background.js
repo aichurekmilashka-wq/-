@@ -111,7 +111,9 @@ chrome.runtime.onMessage.addListener((message, _sender, reply) => {
       }
       config.baseUrl = url.origin;
       const state = await request(config, "/api/tracker/state");
-      await chrome.storage.local.set({config, previous: null, pending: [], status: {
+      const saved = await chrome.storage.local.get(["config", "previous", "pending"]);
+      const restored = WorktimeCore.reconnectState(saved, config);
+      await chrome.storage.local.set({config, ...restored, status: {
         ok: true, message: "Подключено", employee: state.employee.name, at: Date.now(), queued: 0,
       }});
       await initialize();

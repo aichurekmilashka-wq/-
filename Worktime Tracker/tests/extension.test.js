@@ -37,5 +37,22 @@ test("first observation does not invent past activity", () => equal(WorktimeCore
 test("interval clips to task start", () => equal(WorktimeCore.interval({...sample, session: {id: 8, started_at: 110}}, 130).started_at, 110));
 test("known stopped task clips to stop time", () => equal(WorktimeCore.interval({...sample, session: {id: 7, started_at: 90, ended_at: 120}}, 130).ended_at, 120));
 test("old sample stays attached to old task", () => equal(WorktimeCore.interval(sample, 130).session_id, 7));
+const config = {baseUrl: "http://127.0.0.1:8765", key: "fictional-code", enabled: true};
+const unsent = [{event_id: "awaiting-delivery", session_id: 7}];
+test("reconnecting the same employee preserves unsent events", () => {
+  equal(WorktimeCore.reconnectState({config, pending: unsent, previous: sample}, config), {pending: unsent, previous: sample});
+});
+test("switching employee cannot silently drop another queue", () => {
+  let rejected = false;
+  try { WorktimeCore.reconnectState({config, pending: unsent}, {...config, key: "another-code"}); }
+  catch (error) { rejected = error.message.includes("неотправленные"); }
+  equal(rejected, true);
+});
+test("resuming does not count the paused interval", () => {
+  equal(WorktimeCore.reconnectState({config: {...config, enabled: false}, pending: unsent, previous: sample}, config), {pending: unsent, previous: null});
+});
+test("first connection starts without invented history", () => {
+  equal(WorktimeCore.reconnectState({}, config), {pending: [], previous: null});
+});
 log(`${passed} passed, ${failures} failed`);
 if (failures) throw new Error("Extension tests failed");

@@ -19,7 +19,7 @@ STATIC_FILES = {"/": ("index.html", "text/html"), "/app.js": ("app.js", "text/ja
 
 def integer(value, label="Идентификатор"):
     try:
-        if isinstance(value, bool) or str(int(value)) != str(value) or int(value) < 1:
+        if isinstance(value, bool) or str(int(value)) != str(value) or not 1 <= int(value) <= 2**63 - 1:
             raise ValueError
         return int(value)
     except (ValueError, TypeError, OverflowError):
@@ -146,7 +146,7 @@ class Application:
             return 201, {"session": self.store.start(employee_id, body.get("description"))}, []
         match = re.fullmatch(r"/api/sessions/([1-9][0-9]*)/stop", path)
         if match and method == "POST":
-            session_id = int(match[1])
+            session_id = integer(match[1])
             session = self.store.session(session_id)
             self.require_employee(user, session["employee_id"])
             return 200, {"session": self.store.stop(session_id)}, []

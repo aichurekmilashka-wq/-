@@ -199,6 +199,35 @@ class StoreTests(unittest.TestCase):
         with self.assertRaises(Problem):
             self.event(session, self.now, float("nan"))
 
+    def test_page_outside_shortened_task_is_not_listed_with_zero_time(self):
+        session = self.start()
+        self.now += 60
+        self.event(session, self.now - 30, self.now)
+        self.now -= 40
+        self.store.stop(session["id"])
+        self.now += 120
+        self.assertEqual(self.report()["pages"], [])
+
+    def test_completely_empty_database_has_zero_report(self):
+        empty = Store(Path(self.tmp.name) / "empty.sqlite3", clock=lambda: self.now)
+        report = empty.report("2026-11-06", "2026-11-06")
+        self.assertEqual(report["employees"], [])
+        self.assertEqual(report["entries"], [])
+        self.assertEqual(report["total_seconds"], 0)
+
+    def test_employee_filter_does_not_mix_team_totals(self):
+        anna = self.start()
+        other = self.store.add_employee("Олег Вымышленный")
+        oleg = self.store.start(other["id"], "Другая задача")
+        self.now += 60
+        self.store.stop(anna["id"])
+        self.now += 30
+        self.store.stop(oleg["id"])
+        report = self.store.report("2026-11-06", "2026-11-06", self.person["id"])
+        self.assertEqual(report["total_seconds"], 60)
+        self.assertEqual([entry["employee_id"] for entry in report["entries"]], [self.person["id"]])
+        self.assertEqual(self.report()["total_seconds"], 150)
+
 
 if __name__ == "__main__":
     unittest.main()

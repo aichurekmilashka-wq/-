@@ -16,5 +16,14 @@ globalThis.WorktimeCore = (() => {
     if (end <= begin) return null;
     return {session_id: previous.session.id, started_at: begin, ended_at: end, ...previous.state};
   }
-  return {classify, interval};
+
+  function reconnectState(saved, config) {
+    const pending = saved.pending || [];
+    const same = saved.config?.baseUrl === config.baseUrl && saved.config?.key === config.key;
+    if (!same && pending.length) {
+      throw new Error("Остались неотправленные события другого подключения. Восстановите прежнее подключение и дождитесь отправки.");
+    }
+    return {pending: same ? pending : [], previous: same && saved.config.enabled ? saved.previous ?? null : null};
+  }
+  return {classify, interval, reconnectState};
 })();

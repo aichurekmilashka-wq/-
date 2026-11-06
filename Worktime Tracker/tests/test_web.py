@@ -185,6 +185,25 @@ class WebTests(unittest.TestCase):
         result = self.request("/api/login", "POST", CONTENT_LENGTH="1", **{"wsgi.input": io.BytesIO(b"{")})
         self.assertEqual(result["status"], 400)
 
+    def test_out_of_range_employee_id_is_a_client_error(self):
+        cookie = self.login()
+        result = self.request("/api/sessions", "POST", {
+            "employee_id": 10 ** 100, "description": "Тестовая задача",
+        }, cookie)
+        self.assertEqual(result["status"], 400)
+
+    def test_out_of_range_tracker_session_is_a_client_error(self):
+        key = self.store.employees(self.anna["employee_id"])[0]["tracking_key"]
+        result = self.request("/api/tracker/activity", "POST", {
+            "session_id": 10 ** 100, "event_id": "invalid-session",
+            "started_at": self.now - 30, "ended_at": self.now, "kind": "idle",
+        }, HTTP_AUTHORIZATION="Bearer " + key)
+        self.assertEqual(result["status"], 400)
+
+    def test_out_of_range_stop_id_is_a_client_error(self):
+        result = self.request(f"/api/sessions/{10 ** 100}/stop", "POST", {}, self.login())
+        self.assertEqual(result["status"], 400)
+
 
 if __name__ == "__main__":
     unittest.main()
